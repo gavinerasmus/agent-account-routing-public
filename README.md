@@ -326,8 +326,20 @@ installer printed into `~/.local/bin`, keeping their execute bits. Remove the
 `agent-connectors` symlink if `before.json` records it as absent, or point it
 back at the target it records. No login or config store needs restoring.
 
+## Messaging between agents
+
+Routing gives each folder its own accounts, but agents on different accounts
+still need to talk to each other. [agent-peer](https://github.com/gavinerasmus/agent-peer)
+does that for Claude, Codex and pi running in [Herdr](https://herdr.dev)
+panes: `agent-peer --to <repo|kind|pane> "<message>"` delivers into another
+agent's pane, whichever account it runs under, and the recipient replies the
+same way. It is useful for handoffs and for asking another agent to review a
+diff. agent-peer only addresses panes; it never touches logins, so the account
+boundaries set here still hold.
+
 ## References
 
+- [agent-peer: messaging between agent panes](https://github.com/gavinerasmus/agent-peer)
 - [Claude Code: disabling claude.ai connectors](https://code.claude.com/docs/en/mcp#disable-claudeai-connectors)
 - [Claude Code: managed MCP and denylist semantics](https://code.claude.com/docs/en/managed-mcp)
 
