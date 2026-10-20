@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# claude-as — start Claude Code under the auth account that belongs to the
+# current repo, then hand over to the real binary.
+#
+# Standalone. It is wired in two independent ways:
+#   - herdr, or any plain shell, via `alias claude=claude-as`;
+#   - called by name from anywhere.
+#
+# AI-account routing (connector access is checked separately by agent-connectors):
+#   - a profile is used only when it holds a .enabled marker, so an
+#     unconfigured or logged-out profile falls back to the default login
+#     instead of coming up unauthenticated;
+#   - a repo with no map.conf entry never consults a profile directory at
+#     all, so no stray directory under PROFILE_ROOT can capture the default.
+set -euo pipefail
+
+PROFILE_ROOT="${CLAUDE_PROFILE_ROOT:-$HOME/.claude-profiles}"
+MAP="$PROFILE_ROOT/map.conf"
+
+# The login used when map.conf has no entry for the current repo. This names
+# the account already logged into ~/.claude; it is a label, not a directory
+# under PROFILE_ROOT, so it cannot be enabled by accident.
+DEFAULT_PROFILE="${CLAUDE_DEFAULT_PROFILE:-default login}"
+
+# --why prints the decision and exits without launching anything. Scanned
+# across every argument so it still works after --dangerously-skip-permissions.
+why=0
+if [ $# -gt 0 ]; then
+  for arg in "$@"; do
+    [ "$arg" = "--why" ] && why=1
+  done
+fi
+
+# Look up one folder name in map.conf. Pipe-separated:
+# comments and blank lines ignored, spaces around the fields trimmed. Keep
+# this bash 3.2 clean — macOS ships no other.
+profile_for() {
+  local line f p
+  [ -r "$MAP" ] || return 1
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%%#*}"
+    case "$line" in *[![:space:]]*) ;; *) continue ;; esac
+    IFS='|' read -r f p <<<"$line"
+    f="$(echo "$f" | tr -d '[:space:]')"
+    p="$(echo "$p" | tr -d '[:space:]')"
+    [ -n "$f" ] && [ -n "$p" ] || continue
+    if [ "$f" = "$1" ]; then printf '%s\n' "$p"; return 0; fi
+  done < "$MAP"
+  return 1
+}
+
+# Walk from $PWD up towards /, taking the deepest folder that map.conf names,
+# so a subdirectory of a mapped repo resolves to that repo's profile. A nested
+# repo wins over its parent.
+folder="$(basename "$PWD")"
+profile=""
+d="$PWD"
+while [ -n "$d" ] && [ "$d" != "/" ]; do
+  name="$(basename "$d")"
+  if p="$(profile_for "$name")"; then
+    folder="$name"
+    profile="$p"
+    break
+  fi
+  d="$(dirname "$d")"
+done
+
+# CLAUDE_PROFILE picks a profile by name for one launch, for a folder whose
+# organisation has more than one Claude account. Profile names are connector
+# context names, so the connector check expects that profile's account. An
+# unknown or signed-out profile is refused rather than falling back.
+if [ -n "${CLAUDE_PROFILE:-}" ] && [ -z "${CLAUDE_CONFIG_DIR:-}" ]; then
+  case "$CLAUDE_PROFILE" in */*|.*|'') echo "claude-as: invalid CLAUDE_PROFILE=$CLAUDE_PROFILE" >&2; exit 1 ;; esac
+  if [ ! -f "$PROFILE_ROOT/$CLAUDE_PROFILE/.enabled" ]; then
+    echo "claude-as: profile $CLAUDE_PROFILE is not enabled (sign it in, then touch $PROFILE_ROOT/$CLAUDE_PROFILE/.enabled)" >&2
+    exit 1
+  fi
+  export CLAUDE_CONFIG_DIR="$PROFILE_ROOT/$CLAUDE_PROFILE"
+  export AGENT_CONNECTOR_CONTEXT="${AGENT_CONNECTOR_CONTEXT:-$CLAUDE_PROFILE}"
+  reason="profile $CLAUDE_PROFILE (CLAUDE_PROFILE)"
+elif [ -n "${CLAUDE_CONFIG_DIR:-}" ]; then
+  reason="explicit CLAUDE_CONFIG_DIR=$CLAUDE_CONFIG_DIR"
+elif [ -z "$profile" ]; then
+  reason="$DEFAULT_PROFILE (no map.conf entry)"
+elif [ -f "$PROFILE_ROOT/$profile/.enabled" ]; then
+  export CLAUDE_CONFIG_DIR="$PROFILE_ROOT/$profile"
+  reason="profile $profile"
+else
+  reason="$DEFAULT_PROFILE (profile $profile not enabled)"
+fi
+
+if [ "$why" = 1 ]; then
+  printf '%-24s -> %s\n' "$folder" "$reason"
+fi
+
+exec "${AGENT_CONNECTOR_LAUNCHER:-$HOME/.local/bin/agent-connectors}" claude "$@"

@@ -1,0 +1,10 @@
+# Copy to ~/.claude-profiles/map.conf and/or ~/.codex-profiles/map.conf.
+# One line per folder: <folder basename> | <profile directory name>
+# The deepest folder from the launch directory upwards wins. A folder with no
+# line here uses the default login (~/.claude or ~/.codex). A profile is used
+# only when <profile root>/<profile>/.enabled exists.
+personal      | personal
+personal-site | personal
+consulting    | personal
+client-b      | personal
+client-a      | client-a

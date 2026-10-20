@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# pi-as — start pi on the model provider that belongs to the current repo's
+# work context (policy.json `contexts.<name>.pi`), then hand over to the real
+# binary. Sibling of claude-as and codex-as, wired as `alias pi=pi-as`.
+#
+# pi has one agent dir (~/.pi/agent) and no identity-bound connectors, so
+# there is no profile map: the shared folder map in policy.json selects the
+# context, and the context selects the provider. Endpoints live in
+# ~/.pi/agent/models.json and keys in pi's auth.json or the keychain.
+# `pi-as --why` prints the route without launching anything.
+set -euo pipefail
+exec "${AGENT_CONNECTOR_LAUNCHER:-$HOME/.local/bin/agent-connectors}" pi "$@"

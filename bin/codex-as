@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# codex-as — start Codex under the auth account that belongs to the current
+# repo, then hand over to the real binary. Twin of claude-as.
+#
+# Standalone, and wired the same two ways: as `alias codex=codex-as` for
+# herdr and plain shells, or called by name.
+#
+# Codex differs from Claude Code in two ways worth knowing:
+#   - the config-dir variable is CODEX_HOME, not CLAUDE_CONFIG_DIR;
+#   - auth lives in a plain 0600 file, <home>/auth.json, not the macOS
+#     keychain, so a login can be copied between homes.
+#
+# AI-account routing (connector access is checked separately by agent-connectors):
+#   - a profile is used only when it holds a .enabled marker, so an
+#     unconfigured or logged-out profile falls back to the default login
+#     instead of coming up unauthenticated;
+#   - a repo with no map.conf entry never consults a profile directory at
+#     all, so no stray directory under PROFILE_ROOT can capture the default.
+set -euo pipefail
+
+PROFILE_ROOT="${CODEX_PROFILE_ROOT:-$HOME/.codex-profiles}"
+MAP="$PROFILE_ROOT/map.conf"
+
+# The login used when map.conf has no entry for the current repo. This names
+# the account already logged into ~/.codex; it is a label, not a directory
+# under PROFILE_ROOT, so it cannot be enabled by accident. It may be a
+# different account from claude-as's default.
+DEFAULT_PROFILE="${CODEX_DEFAULT_PROFILE:-default login}"
+
+# --why prints the decision and exits without launching anything. Scanned
+# across every argument so it still works after other flags.
+why=0
+if [ $# -gt 0 ]; then
+  for arg in "$@"; do
+    [ "$arg" = "--why" ] && why=1
+  done
+fi
+
+# Look up one folder name in map.conf. Pipe-separated:
+# comments and blank lines ignored, spaces around the fields trimmed. Keep
+# this bash 3.2 clean — macOS ships no other.
+profile_for() {
+  local line f p
+  [ -r "$MAP" ] || return 1
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%%#*}"
+    case "$line" in *[![:space:]]*) ;; *) continue ;; esac
+    IFS='|' read -r f p <<<"$line"
+    f="$(echo "$f" | tr -d '[:space:]')"
+    p="$(echo "$p" | tr -d '[:space:]')"
+    [ -n "$f" ] && [ -n "$p" ] || continue
+    if [ "$f" = "$1" ]; then printf '%s\n' "$p"; return 0; fi
+  done < "$MAP"
+  return 1
+}
+
+# Walk from $PWD up towards /, taking the deepest folder that map.conf names,
+# so a subdirectory of a mapped repo resolves to that repo's profile. A nested
+# repo wins over its parent.
+folder="$(basename "$PWD")"
+profile=""
+d="$PWD"
+while [ -n "$d" ] && [ "$d" != "/" ]; do
+  name="$(basename "$d")"
+  if p="$(profile_for "$name")"; then
+    folder="$name"
+    profile="$p"
+    break
+  fi
+  d="$(dirname "$d")"
+done
+
+if [ -n "${CODEX_HOME:-}" ]; then
+  reason="explicit CODEX_HOME=$CODEX_HOME"
+elif [ -z "$profile" ]; then
+  reason="$DEFAULT_PROFILE (no map.conf entry)"
+elif [ -f "$PROFILE_ROOT/$profile/.enabled" ]; then
+  export CODEX_HOME="$PROFILE_ROOT/$profile"
+  reason="profile $profile"
+else
+  reason="$DEFAULT_PROFILE (profile $profile not enabled)"
+fi
+
+if [ "$why" = 1 ]; then
+  printf '%-24s -> %s\n' "$folder" "$reason"
+fi
+
+exec "${AGENT_CONNECTOR_LAUNCHER:-$HOME/.local/bin/agent-connectors}" codex "$@"

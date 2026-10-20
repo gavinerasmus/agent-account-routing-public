@@ -1,0 +1,4 @@
+node_modules/
+# Your real configuration. Copy from the *.example files; never commit these.
+policy.json
+map.conf

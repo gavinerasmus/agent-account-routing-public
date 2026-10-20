@@ -1,0 +1,66 @@
+{
+  "defaults": { "claude": "work", "codex": "work", "pi": "work" },
+  "contexts": {
+    "work": { "email": "you@work.example.com", "provider": "microsoft", "ready": true, "pi": "work-llm", "gh": "you-work", "cloud": "work", "chrome": "Profile 1" },
+    "personal": { "email": "you@example.com", "provider": "google", "ready": true, "pi": "cerebras", "gh": "you-personal", "cloud": "personal", "chrome": "Default" },
+    "client-a": { "email": "you@client-a.example.com", "provider": "microsoft", "ready": true, "pi": "cerebras", "gh": "you-client-a", "cloud": "client-a", "chrome": "Profile 2" },
+    "client-a-second": { "email": "shared@client-a.example.com", "provider": "microsoft", "ready": true, "pi": "cerebras", "gh": "you-client-a", "cloud": "client-a", "chrome": "Profile 2" }
+  },
+  "folders": {
+    "work": "work",
+    "work-*": "work",
+    "side-project": "work",
+    "personal": "personal",
+    "personal-site": "personal",
+    "consulting": "personal",
+    "client-b": "personal",
+    "client-a": "client-a"
+  },
+  "clientFolders": {
+    "pi": { "consulting": "work" }
+  },
+  "ghDefault": "you-personal",
+  "ghFolders": {
+    "side-project": "you-personal"
+  },
+  "ghAccounts": {
+    "you-work": ".config/gh-work",
+    "you-personal": ".config/gh",
+    "you-client-a": ".config/gh-client-a"
+  },
+  "cloudDefault": "unrouted",
+  "cloudFolders": {
+    "client-b": "client-b"
+  },
+  "cloudTools": {
+    "azure": { "env": "AZURE_CONFIG_DIR", "dir": ".azure-{group}", "groups": { "work": ".azure" } },
+    "gcloud": { "env": "CLOUDSDK_CONFIG", "dir": ".config/gcloud-{group}", "groups": { "personal": ".config/gcloud" } },
+    "neon": { "env": "NEON_CONFIG_DIR", "dir": ".config/neonctl-{group}", "groups": { "personal": ".config/neonctl" } }
+  },
+  "piProviders": {
+    "cerebras": { "model": "qwen-3.8-27b" },
+    "work-llm": { "model": "example-coder-model" }
+  },
+  "providers": {
+    "google": {
+      "claudeUrls": ["https://gmailmcp.googleapis.com/*", "https://calendarmcp.googleapis.com/*", "https://drivemcp.googleapis.com/*"],
+      "claudeNames": ["claude.ai Gmail", "claude.ai Google Calendar", "claude.ai Google Drive"],
+      "codexApps": {
+        "gmail": "connector_2128aebfecb84f64a069897515042a44",
+        "google-calendar": "connector_947e0d954944416db111db556030eea6",
+        "google-drive": "connector_5f3c8c41a1e54ad7a76272c89e2554fa"
+      }
+    },
+    "microsoft": {
+      "claudeUrls": ["https://microsoft365.mcp.claude.com/*"],
+      "claudeNames": ["claude.ai Microsoft 365"],
+      "codexApps": {
+        "microsoft-onenote": "connector_6a6917bfa0d8819082c3a0425e82cade",
+        "microsoft-outlook-calendar": "connector_e6a7394682e24467ac68c60696f275a4",
+        "microsoft-outlook-email": "connector_4aaab2856305417b993eca9a216aaf6e",
+        "microsoft-sharepoint": "connector_1e4f6a44acf14e3ca1d96672f8c945bc",
+        "microsoft-teams": "connector_246af0940da3457da0e751171dc1ce60"
+      }
+    }
+  }
+}
