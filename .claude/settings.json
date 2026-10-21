@@ -1,0 +1,16 @@
+{
+  "enabledPlugins": {
+    "security-guidance@claude-plugins-official": true,
+    "vercel@claude-plugins-official": false,
+    "claude-for-msft-365-install@synced": false,
+    "data@synced": false,
+    "design@synced": false,
+    "engineering@synced": false,
+    "enterprise-search@synced": false,
+    "finance@synced": false,
+    "marketing@synced": false,
+    "operations@synced": false,
+    "product-management@synced": false,
+    "productivity@synced": false
+  }
+}
